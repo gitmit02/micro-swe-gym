@@ -1,0 +1,22 @@
+# Micro-SWE Gym — Python dependencies
+# Pin minor versions for reproducibility; tested on Python 3.10
+
+# ── Web framework ─────────────────────────────────────────────────────────────
+fastapi==0.111.0
+uvicorn[standard]==0.29.0
+
+# ── Data validation ───────────────────────────────────────────────────────────
+pydantic==2.7.1
+
+# ── LLM client (OpenAI-compatible) ───────────────────────────────────────────
+openai==1.30.1
+
+# ── HTTP client for inference.py ──────────────────────────────────────────────
+requests==2.32.2
+
+# ── OpenEnv core (install from PyPI if available, else comment out) ───────────
+openenv-core==0.1.0   
+
+# ── Testing ───────────────────────────────────────────────────────────────────
+pytest==8.2.0
+httpx==0.27.0          # needed by FastAPI TestClient
