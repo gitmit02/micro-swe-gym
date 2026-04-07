@@ -1,67 +1,28 @@
 """
 Micro-SWE Gym — Baseline inference script.
-
-Reads configuration from environment variables:
-    API_BASE_URL   Base URL of the OpenAI-compatible endpoint (required)
-    MODEL_NAME     Model identifier                              (required)
-    HF_TOKEN       Hugging Face / bearer token                  (required)
-
-Emits structured logs:
-    [START] — once at the beginning
-    [STEP]  — after every environment step
-    [END]   — once at termination with final reward
-
-Usage:
-    export API_BASE_URL="https://api-inference.huggingface.co/models/<org>/<model>/v1"
-    export MODEL_NAME="<org>/<model>"
-    export HF_TOKEN="hf_..."
-    python inference.py
+Aligned with Meta OpenEnv Hackathon requirements.
 """
 from __future__ import annotations
 
-import json
-import logging
 import os
 import sys
 import time
-
 import requests
 from openai import OpenAI
 
 # ---------------------------------------------------------------------------
-# Logging setup
+# Configuration with MANDATORY defaults
 # ---------------------------------------------------------------------------
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s  %(levelname)-8s  %(message)s",
-    datefmt="%Y-%m-%dT%H:%M:%S",
-)
-log = logging.getLogger("inference")
+API_BASE_URL: str = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1").rstrip("/")
+MODEL_NAME: str = os.getenv("MODEL_NAME", "meta-llama/Llama-3.2-3B-Instruct")
+HF_TOKEN: str = os.getenv("HF_TOKEN")
+# Note: When deployed on HF Spaces, the server is usually on localhost:8000 internally
+SERVER_URL: str = os.getenv("ENV_SERVER_URL", "http://localhost:8000")
+MAX_STEPS: int = int(os.getenv("MAX_STEPS", "5"))
 
-
-def _log(tag: str, payload: dict) -> None:
-    """Emit a structured JSON log line with a required tag."""
-    log.info("%s %s", tag, json.dumps(payload))
-
-
-# ---------------------------------------------------------------------------
-# Configuration
-# ---------------------------------------------------------------------------
-
-API_BASE_URL: str = os.environ.get("API_BASE_URL", "").rstrip("/")
-MODEL_NAME: str = os.environ.get("MODEL_NAME", "")
-HF_TOKEN: str = os.environ.get("HF_TOKEN", "")
-SERVER_URL: str = os.environ.get("ENV_SERVER_URL", "http://localhost:8000")
-MAX_STEPS: int = int(os.environ.get("MAX_STEPS", "5"))
-
-
-def _validate_env() -> None:
-    missing = [v for v in ("API_BASE_URL", "MODEL_NAME", "HF_TOKEN") if not os.environ.get(v)]
-    if missing:
-        log.error("Missing required environment variables: %s", ", ".join(missing))
-        sys.exit(1)
-
+if not HF_TOKEN:
+    raise ValueError("HF_TOKEN environment variable is required")
 
 # ---------------------------------------------------------------------------
 # Environment client helpers
@@ -71,7 +32,6 @@ def _reset(task_id: int = 0) -> dict:
     r = requests.post(f"{SERVER_URL}/reset", json={"task_id": task_id}, timeout=30)
     r.raise_for_status()
     return r.json()["observation"]
-
 
 def _step(fixed_code: str, task_id: int = 0) -> tuple[dict, float, bool, dict]:
     r = requests.post(
@@ -84,117 +44,78 @@ def _step(fixed_code: str, task_id: int = 0) -> tuple[dict, float, bool, dict]:
     data = r.json()
     return data["observation"], data["reward"], data["done"], data["info"]
 
-
 # ---------------------------------------------------------------------------
 # LLM helper
 # ---------------------------------------------------------------------------
 
-SYSTEM_PROMPT = """\
-You are an expert Python software engineer.
-You will be given a broken Python function.
-Your task: return ONLY the corrected Python source code — no explanation, no markdown fences.
-The code must be syntactically valid and pass all unit tests."""
+SYSTEM_PROMPT = "You are an expert Python engineer. Return ONLY corrected Python code — no explanation, no markdown."
 
-
-def _ask_llm(client: OpenAI, broken_code: str, error_message: str, difficulty: str) -> str:
-    """Call the model and extract the fixed code string."""
-    user_content = (
-        f"Difficulty: {difficulty}\n\n"
-        f"Broken code:\n```python\n{broken_code}\n```\n"
-    )
+def _ask_llm(client: OpenAI, broken_code: str, error_message: str) -> str:
+    user_content = f"Broken code:\n{broken_code}\n"
     if error_message:
-        user_content += f"\nPrevious error:\n{error_message}\n"
-    user_content += "\nReturn ONLY the corrected Python code."
-
+        user_content += f"\nError: {error_message}\n"
+    
     response = client.chat.completions.create(
         model=MODEL_NAME,
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user",   "content": user_content},
+            {"role": "user", "content": user_content},
         ],
-        temperature=0.2,
-        max_tokens=512,
+        temperature=0.1,
     )
-    raw: str = response.choices[0].message.content or ""
-    # Strip any accidental markdown fences the model might emit
-    raw = raw.strip()
-    if raw.startswith("```"):
-        lines = raw.splitlines()
-        # drop first and last fence lines
-        inner = lines[1:] if lines[0].startswith("```") else lines
-        if inner and inner[-1].strip() == "```":
-            inner = inner[:-1]
-        raw = "\n".join(inner)
-    return raw.strip()
-
+    raw = response.choices[0].message.content or ""
+    # Strip markdown if present
+    return raw.replace("```python", "").replace("```", "").strip()
 
 # ---------------------------------------------------------------------------
 # Main loop
 # ---------------------------------------------------------------------------
 
-def run(task_id: int = 0) -> float:
-    """Run the agent on one task. Returns the final reward."""
-    _validate_env()
-
+def run(task_id: int = 0):
     client = OpenAI(base_url=API_BASE_URL, api_key=HF_TOKEN)
+    rewards_history = []
+    
+    # 1. [START] line
+    print(f"[START] task={task_id} env=micro_swe_gym model={MODEL_NAME}")
 
-    # ── [START] ─────────────────────────────────────────────────────────────
-    _log("[START]", {
-        "task_id": task_id,
-        "model": MODEL_NAME,
-        "server": SERVER_URL,
-        "max_steps": MAX_STEPS,
-    })
+    try:
+        obs = _reset(task_id)
+        done = False
+        step_num = 0
+        solved = False
 
-    obs = _reset(task_id)
-    _log("[STEP]", {"event": "reset", "difficulty": obs["difficulty"], "task_id": task_id})
+        while not done and step_num < MAX_STEPS:
+            step_num += 1
+            
+            fixed_code = _ask_llm(client, obs["broken_code"], obs.get("error_message", ""))
+            
+            # Action string for logging (one line, no newlines)
+            action_snippet = fixed_code.replace("\n", "\\n")[:50]
+            
+            obs, reward, done, info = _step(fixed_code, task_id)
+            rewards_history.append(reward)
+            
+            error_msg = obs.get("error_message", "null")
+            if error_msg == "": error_msg = "null"
 
-    reward: float = 0.0
-    done: bool = False
-    step_num: int = 0
+            # 2. [STEP] line
+            print(f"[STEP] step={step_num} action={action_snippet}... reward={reward:.2f} done={str(done).lower()} error={error_msg}")
+            
+            if reward == 1.0:
+                solved = True
 
-    while not done and step_num < MAX_STEPS:
-        step_num += 1
-        t0 = time.monotonic()
+    except Exception as e:
+        # If something crashes, we still need to satisfy the [END] requirement
+        print(f"[END] success=false steps={step_num} rewards=0.00")
+        raise e
 
-        fixed_code = _ask_llm(
-            client,
-            broken_code=obs["broken_code"],
-            error_message=obs.get("error_message", ""),
-            difficulty=obs["difficulty"],
-        )
-
-        obs, reward, done, info = _step(fixed_code, task_id)
-        elapsed = round(time.monotonic() - t0, 3)
-
-        _log("[STEP]", {
-            "step": step_num,
-            "reward": reward,
-            "done": done,
-            "elapsed_s": elapsed,
-            "task_id": task_id,
-            "difficulty": obs["difficulty"],
-            "error": obs.get("error_message", "")[:200] or None,
-        })
-
-    # ── [END] ───────────────────────────────────────────────────────────────
-    _log("[END]", {
-        "task_id": task_id,
-        "total_steps": step_num,
-        "final_reward": reward,
-        "solved": done,
-    })
-
-    return reward
-
+    # 3. [END] line
+    rewards_str = ",".join([f"{r:.2f}" for r in rewards_history])
+    print(f"[END] success={str(solved).lower()} steps={step_num} rewards={rewards_str}")
 
 if __name__ == "__main__":
     import argparse
-
-    parser = argparse.ArgumentParser(description="Micro-SWE Gym — baseline agent")
-    parser.add_argument("--task-id", type=int, default=0, choices=[0, 1, 2],
-                        help="Task to solve: 0=easy, 1=medium, 2=hard")
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--task-id", type=int, default=0)
     args = parser.parse_args()
-
-    final_reward = run(task_id=args.task_id)
-    sys.exit(0 if final_reward == 1.0 else 1)
+    run(task_id=args.task_id)
