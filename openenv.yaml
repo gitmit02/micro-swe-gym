@@ -1,0 +1,43 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# Micro-SWE Gym — OpenEnv metadata
+# Spec version: 1
+# ──────────────────────────────────────────────────────────────────────────────
+spec_version: 1
+
+name: micro-swe-gym
+version: "1.0.0"
+description: >
+  A real-world RL environment where an AI agent acts as an Automated PR
+  Reviewer/Fixer. The agent receives a broken Python function and must return
+  corrected code that passes all deterministic unit tests.
+
+author: "Micro-SWE Gym Team"
+
+tasks:
+  - id: 0
+    difficulty: easy
+    description: "Fix a simple operator error (+ instead of -)."
+  - id: 1
+    difficulty: medium
+    description: "Add missing edge-case handling (empty list → return 0.0)."
+  - id: 2
+    difficulty: hard
+    description: "Refactor O(n²) two-sum to O(n) hash-map solution."
+
+reward:
+  no_compile: 0.0
+  compile_fail: 0.2
+  all_pass: 1.0
+
+runtime:
+  language: python
+  version: "3.10"
+  max_inference_minutes: 20
+  resources:
+    vcpus: 2
+    memory_gb: 8
+
+endpoints:
+  reset: "POST /reset"
+  step:  "POST /step"
+  state: "GET  /state"

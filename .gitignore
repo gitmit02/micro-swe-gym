@@ -1,0 +1,24 @@
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environment folders
+.venv/
+venv/
+env/
+.env
+
+# OpenEnv & Tooling caches
+.pytest_cache/
+.ipynb_checkpoints/
+openenv_micro_s*/
+
+# Lock files (optional, usually kept, but safe to ignore if using uv sync)
+# uv.lock
+
+# OS-specific
+.DS_Store
+Thumbs.db
+
+*.egg-info/
