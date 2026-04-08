@@ -11,27 +11,36 @@ import requests
 from openai import OpenAI
 
 # ---------------------------------------------------------------------------
-# Configuration with MANDATORY defaults
+# Configuration with MANDATORY defaults & Fixes
 # ---------------------------------------------------------------------------
 
 API_BASE_URL: str = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1").rstrip("/")
 MODEL_NAME: str = os.getenv("MODEL_NAME", "meta-llama/Llama-3.2-3B-Instruct")
 HF_TOKEN: str = os.getenv("HF_TOKEN")
-# Note: When deployed on HF Spaces, the server is usually on localhost:8000 internally
-SERVER_URL: str = os.getenv("ENV_SERVER_URL", "http://localhost:8000")
+
+# FIX: Use your direct Space URL instead of localhost
+DEFAULT_ENV_URL = "https://coderbug-micro-swe-gym.hf.space"
+SERVER_URL: str = os.getenv("ENV_SERVER_URL", DEFAULT_ENV_URL).rstrip("/")
 MAX_STEPS: int = int(os.getenv("MAX_STEPS", "5"))
 
 if not HF_TOKEN:
-    raise ValueError("HF_TOKEN environment variable is required")
+    print("Warning: HF_TOKEN not found in environment")
 
 # ---------------------------------------------------------------------------
-# Environment client helpers
+# Environment client helpers with RETRY LOGIC
 # ---------------------------------------------------------------------------
 
 def _reset(task_id: int = 0) -> dict:
-    r = requests.post(f"{SERVER_URL}/reset", json={"task_id": task_id}, timeout=30)
-    r.raise_for_status()
-    return r.json()["observation"]
+    # Retry logic ensures we don't crash if the Space is waking up
+    for i in range(10):
+        try:
+            r = requests.post(f"{SERVER_URL}/reset", json={"task_id": task_id}, timeout=30)
+            r.raise_for_status()
+            return r.json()["observation"]
+        except Exception as e:
+            print(f"Waiting for server at {SERVER_URL} (Attempt {i+1}/10)...")
+            time.sleep(10)
+    raise ConnectionError(f"Could not connect to environment at {SERVER_URL}")
 
 def _step(fixed_code: str, task_id: int = 0) -> tuple[dict, float, bool, dict]:
     r = requests.post(
@@ -64,7 +73,6 @@ def _ask_llm(client: OpenAI, broken_code: str, error_message: str) -> str:
         temperature=0.1,
     )
     raw = response.choices[0].message.content or ""
-    # Strip markdown if present
     return raw.replace("```python", "").replace("```", "").strip()
 
 # ---------------------------------------------------------------------------
@@ -75,41 +83,35 @@ def run(task_id: int = 0):
     client = OpenAI(base_url=API_BASE_URL, api_key=HF_TOKEN)
     rewards_history = []
     
-    # 1. [START] line
     print(f"[START] task={task_id} env=micro_swe_gym model={MODEL_NAME}")
 
+    step_num = 0
+    solved = False
     try:
         obs = _reset(task_id)
         done = False
-        step_num = 0
-        solved = False
 
         while not done and step_num < MAX_STEPS:
             step_num += 1
-            
             fixed_code = _ask_llm(client, obs["broken_code"], obs.get("error_message", ""))
-            
-            # Action string for logging (one line, no newlines)
             action_snippet = fixed_code.replace("\n", "\\n")[:50]
             
             obs, reward, done, info = _step(fixed_code, task_id)
             rewards_history.append(reward)
             
             error_msg = obs.get("error_message", "null")
-            if error_msg == "": error_msg = "null"
+            if not error_msg: error_msg = "null"
 
-            # 2. [STEP] line
             print(f"[STEP] step={step_num} action={action_snippet}... reward={reward:.2f} done={str(done).lower()} error={error_msg}")
             
             if reward == 1.0:
                 solved = True
 
     except Exception as e:
-        # If something crashes, we still need to satisfy the [END] requirement
         print(f"[END] success=false steps={step_num} rewards=0.00")
-        raise e
+        print(f"DEBUG: {e}")
+        return
 
-    # 3. [END] line
     rewards_str = ",".join([f"{r:.2f}" for r in rewards_history])
     print(f"[END] success={str(solved).lower()} steps={step_num} rewards={rewards_str}")
 
