@@ -29,6 +29,14 @@ def _get_or_create_env(task_id: int) -> MicroSweGymEnvironment:
         _envs[task_id] = MicroSweGymEnvironment(task_id=task_id)
     return _envs[task_id]
 
+@app.get("/")
+def read_root():
+    return {"status": "healthy", "message": "Micro-SWE Gym is running"}
+
+@app.get("/health")
+def health_check():
+    return {"status": "healthy"}
+
 
 @app.get("/health")
 def health() -> dict:
