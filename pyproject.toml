@@ -17,7 +17,7 @@ dependencies = [
     # Core OpenEnv runtime (provides FastAPI server + HTTP client types)
     # install from github
     # "openenv-core[core] @ git+https://github.com/meta-pytorch/OpenEnv.git",
-    "openenv-core[core]>=0.2.2",
+    "openenv-core[core]==0.2.3",
     # Environment-specific dependencies
     # Add all dependencies needed for your environment here
     # Examples:
@@ -26,7 +26,7 @@ dependencies = [
     # "gymnasium>=0.29.0",
     # "openspiel>=1.0.0",
     # "smolagents>=1.22.0,<2",
-    "openai>=1.30.1",
+    "openai>=2.7.2,<3",
     "requests>=2.32.2",
 ]
 
