@@ -6,7 +6,7 @@ from openai import OpenAI
 
 # Configuration
 API_BASE_URL: str = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1").rstrip("/")
-MODEL_NAME: str = os.getenv("MODEL_NAME", "meta-llama/Llama-3.2-3B-Instruct")
+MODEL_NAME: str = os.getenv("MODEL_NAME", "meta-llama/Llama-3.2-1B-Instruct")
 HF_TOKEN: str = os.getenv("HF_TOKEN")
 # Forced URL to your space
 SERVER_URL = os.getenv("ENV_SERVER_URL", "https://coderbug-micro-swe-gym.hf.space").rstrip("/")
