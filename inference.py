@@ -1,6 +1,12 @@
+import time
+import os
+
+# Give the server 5 seconds to warm up before starting inference
+print("Warming up the server...")
+time.sleep(5)
+
 import os
 import sys
-import time
 import requests
 from openai import OpenAI
 
