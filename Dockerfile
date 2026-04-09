@@ -31,12 +31,12 @@ COPY inference.py     ./inference.py
 COPY server/          ./server/
 COPY openenv.yaml     ./openenv.yaml
 
-# ── Health check ──────────────────────────────────────────────────────────────
-HEALTHCHECK --interval=15s --timeout=5s --start-period=10s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
+# ── Health check (Change 8000 to 7860) ─────────────────────────────────────────
+HEALTHCHECK --interval=15s --timeout=5s --start-period=30s --retries=3 \
+    CMD curl -f http://localhost:7860/health || exit 1
 
-# ── Expose FastAPI port ───────────────────────────────────────────────────────
-EXPOSE 8000
+# ── Expose FastAPI port (Change 8000 to 7860) ──────────────────────────────────
+EXPOSE 7860
 
-# ── Default command: run the environment server ───────────────────────────────
+# ── Default command ───────────────────────────────────────────────────────────
 CMD ["uvicorn", "server.app:app", "--host", "0.0.0.0", "--port", "7860"]
