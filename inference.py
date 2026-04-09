@@ -74,4 +74,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--task-id", type=int, default=0)
     args = parser.parse_args()
-    run(task_id=args.task_id)
+    
+    # The fix: Loop through tasks 0, 1, and 2
+    for tid in [0, 1, 2]:
+        print(f"\n{'='*20}")
+        print(f"RUNNING TASK ID: {tid}")
+        print(f"{'='*20}\n")
+        run(task_id=tid)
