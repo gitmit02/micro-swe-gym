@@ -1,12 +1,6 @@
-import time
-import os
-
-# Give the server 5 seconds to warm up before starting inference
-print("Warming up the server...")
-time.sleep(5)
-
 import os
 import sys
+import time
 import requests
 from openai import OpenAI
 
@@ -14,8 +8,8 @@ from openai import OpenAI
 API_BASE_URL: str = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1").rstrip("/")
 MODEL_NAME: str = os.getenv("MODEL_NAME", "meta-llama/Llama-3.2-1B-Instruct")
 HF_TOKEN: str = os.getenv("HF_TOKEN")
-# Forced URL to your space
-SERVER_URL = os.getenv("ENV_SERVER_URL", "https://coderbug-micro-swe-gym.hf.space").rstrip("/")
+# Default to local evaluator container/server. Override with ENV_SERVER_URL if needed.
+SERVER_URL = os.getenv("ENV_SERVER_URL", "http://127.0.0.1:7860").rstrip("/")
 MAX_STEPS: int = int(os.getenv("MAX_STEPS", "5"))
 
 def _reset(task_id: int = 0) -> dict:
