@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
 import sys
 import os
@@ -31,8 +31,15 @@ def _get_or_create_env(task_id: int) -> MicroSweGymEnvironment:
     return _envs[task_id]
 
 @app.post("/reset")
-def reset(task_id: int = 0) -> JSONResponse:
+async def reset(request: Request, task_id: int = Query(default=0)) -> JSONResponse:
     try:
+        # Accept both query param and JSON body: {"task_id": ...}
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+        if isinstance(body, dict) and "task_id" in body:
+            task_id = int(body["task_id"])
         env = _get_or_create_env(task_id)
         obs = env.reset()
         return JSONResponse({"observation": obs.model_dump()})
@@ -40,10 +47,24 @@ def reset(task_id: int = 0) -> JSONResponse:
         raise HTTPException(status_code=400, detail=str(e))
 
 @app.post("/step")
-def step(task_id: int = 0, fixed_code: str = "") -> JSONResponse:
-    if task_id not in _envs:
-        raise HTTPException(status_code=400, detail="Call /reset first.")
+async def step(
+    request: Request,
+    task_id: int = Query(default=0),
+    fixed_code: str = Query(default=""),
+) -> JSONResponse:
     try:
+        # Accept both query params and JSON body: {"fixed_code": "...", "task_id": ...}
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+        if isinstance(body, dict):
+            if "task_id" in body:
+                task_id = int(body["task_id"])
+            if "fixed_code" in body and isinstance(body["fixed_code"], str):
+                fixed_code = body["fixed_code"]
+        if task_id not in _envs:
+            raise HTTPException(status_code=400, detail="Call /reset first.")
         env = _envs[task_id]
         obs, reward, done, info = env.step({"fixed_code": fixed_code})
         return JSONResponse({
@@ -52,6 +73,16 @@ def step(task_id: int = 0, fixed_code: str = "") -> JSONResponse:
             "done": done,
             "info": info,
         })
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.get("/state")
+def state(task_id: int = 0) -> JSONResponse:
+    if task_id not in _envs:
+        raise HTTPException(status_code=400, detail="Call /reset first.")
+    try:
+        env = _envs[task_id]
+        return JSONResponse(env.state())
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
