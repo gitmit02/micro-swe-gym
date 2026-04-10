@@ -109,9 +109,9 @@ TASKS: list[dict[str, Any]] = [
     },
 ]
 
-MIN_REWARD = 0.05
-PARTIAL_REWARD = 0.2
-MAX_REWARD = 0.95
+MIN_REWARD = 0.10      
+PARTIAL_REWARD = 0.50  
+MAX_REWARD = 0.90      
 
 
 # ---------------------------------------------------------------------------
