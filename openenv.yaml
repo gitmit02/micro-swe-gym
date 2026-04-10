@@ -25,9 +25,9 @@ tasks:
     description: "Refactor O(n²) two-sum to O(n) hash-map solution."
 
 reward:
-  no_compile: 0.0
+  no_compile: 0.05
   compile_fail: 0.2
-  all_pass: 1.0
+  all_pass: 0.95
 
 runtime:
   language: python
