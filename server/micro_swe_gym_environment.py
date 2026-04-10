@@ -7,9 +7,9 @@ Implements the three required methods:
     state()  → dict
 
 Reward scheme:
-    0.0  — code does not compile
+    0.05 — code does not compile
     0.2  — compiles but fails tests
-    1.0  — all tests pass
+    0.95 — all tests pass
 """
 from __future__ import annotations
 
@@ -109,6 +109,10 @@ TASKS: list[dict[str, Any]] = [
     },
 ]
 
+MIN_REWARD = 0.05
+PARTIAL_REWARD = 0.2
+MAX_REWARD = 0.95
+
 
 # ---------------------------------------------------------------------------
 # Environment
@@ -123,7 +127,7 @@ class MicroSweGymEnvironment:
         self._last_error: str = ""
         self._done: bool = False
         self._steps: int = 0
-        self._last_reward: float = 0.0
+        self._last_reward: float = MIN_REWARD
 
     # ------------------------------------------------------------------
     # Public OpenEnv interface
@@ -134,7 +138,7 @@ class MicroSweGymEnvironment:
         self._last_error = ""
         self._done = False
         self._steps = 0
-        self._last_reward = 0.0
+        self._last_reward = MIN_REWARD
         obs_dict = self._observation()
         return MicroSweGymObservation(**obs_dict)
 
@@ -150,7 +154,7 @@ class MicroSweGymEnvironment:
         Returns
         -------
         observation : MicroSweGymObservation
-        reward      : float  (0.0 / 0.2 / 1.0)
+        reward      : float  (0.05 / 0.2 / 0.95)
         done        : bool
         info        : dict
         """
@@ -163,7 +167,7 @@ class MicroSweGymEnvironment:
         reward, error = self._evaluate(fixed_code)
         self._last_reward = reward
         self._last_error = error
-        self._done = reward == 1.0  # succeed → terminal
+        self._done = reward >= MAX_REWARD  # succeed → terminal
 
         obs_dict = self._observation()
         obs = MicroSweGymObservation(**obs_dict)
@@ -211,9 +215,9 @@ class MicroSweGymEnvironment:
         try:
             exec(compile(code, "<agent_code>", "exec"), namespace)  # noqa: S102
         except SyntaxError as exc:
-            return 0.0, f"SyntaxError: {exc}"
+            return MIN_REWARD, f"SyntaxError: {exc}"
         except Exception:
-            return 0.0, f"ExecError:\n{traceback.format_exc()}"
+            return MIN_REWARD, f"ExecError:\n{traceback.format_exc()}"
 
         # ── Phase 2: run unit tests ────────────────────────────────────────
         failures: list[str] = []
@@ -232,6 +236,6 @@ class MicroSweGymEnvironment:
                 )
 
         if failures:
-            return 0.2, "Tests failed:\n" + "\n".join(failures)
+            return PARTIAL_REWARD, "Tests failed:\n" + "\n".join(failures)
 
-        return 1.0, ""
+        return MAX_REWARD, ""
