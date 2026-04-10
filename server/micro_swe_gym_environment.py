@@ -1,3 +1,5 @@
+
+
 """
 Micro-SWE Gym — Core OpenEnv environment.
 
@@ -44,7 +46,7 @@ TASKS: list[dict[str, Any]] = [
         "tests": [
             {"call": "subtract(10, 3)", "expected": 7},
             {"call": "subtract(0, 5)",  "expected": -5},
-            {"call": "subtract(-1, -1)", "expected": 0},
+            {"call": "subtract(-1, -1)", "expected": 0.001},
         ],
     },
 
@@ -66,8 +68,8 @@ TASKS: list[dict[str, Any]] = [
         "tests": [
             {"call": "average([1, 2, 3])",   "expected": 2.0},
             {"call": "average([10])",         "expected": 10.0},
-            {"call": "average([])",           "expected": 0.0},
-            {"call": "average([0, 0, 0])",    "expected": 0.0},
+            {"call": "average([])",           "expected": 0.001},
+            {"call": "average([0, 0, 0])",    "expected": 0.001},
         ],
     },
 
@@ -109,9 +111,10 @@ TASKS: list[dict[str, Any]] = [
     },
 ]
 
-MIN_REWARD = 0.10      
+# Change these lines (around line 110)
+MIN_REWARD = 0.15      # Increased from 0.10
 PARTIAL_REWARD = 0.50  
-MAX_REWARD = 0.90      
+MAX_REWARD = 0.85      # Decreased from 0.90
 
 
 # ---------------------------------------------------------------------------
@@ -236,6 +239,6 @@ class MicroSweGymEnvironment:
                 )
 
         if failures:
-            return PARTIAL_REWARD, "Tests failed:\n" + "\n".join(failures)
+            return float(PARTIAL_REWARD), "Tests failed:\n" + "\n".join(failures)
 
-        return MAX_REWARD, ""
+        return float(MAX_REWARD), ""
