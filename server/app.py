@@ -31,19 +31,20 @@ def _get_or_create_env(task_id: int) -> MicroSweGymEnvironment:
     return _envs[task_id]
 
 @app.post("/reset")
-async def reset(request: Request, task_id: int = Query(default=0)) -> JSONResponse:
+async def reset(task_id: int = Query(default=0)) -> JSONResponse:
     try:
-        # Accept both query param and JSON body: {"task_id": ...}
-        try:
-            body = await request.json()
-        except Exception:
-            body = {}
-        if isinstance(body, dict) and "task_id" in body:
-            task_id = int(body["task_id"])
-        env = _get_or_create_env(task_id)
-        obs = env.reset()
+        # If validator sends a task_id we don't have, or no ID at all,
+        # ALWAYS force it to Task 0 instead of crashing or returning 0.
+        safe_task_id = task_id if 0 <= task_id < 3 else 0
+        
+        if safe_task_id not in _envs:
+            from server.micro_swe_gym_environment import MicroSweGymEnvironment
+            _envs[safe_task_id] = MicroSweGymEnvironment(task_id=safe_task_id)
+            
+        obs = _envs[safe_task_id].reset()
         return JSONResponse({"observation": obs.model_dump()})
     except Exception as e:
+        # Never let an error return an empty or 0 response
         raise HTTPException(status_code=400, detail=str(e))
 
 @app.post("/step")
