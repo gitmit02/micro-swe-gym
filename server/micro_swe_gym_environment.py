@@ -239,6 +239,6 @@ class MicroSweGymEnvironment:
                 )
 
         if failures:
-            return float(PARTIAL_REWARD), "Tests failed:\n" + "\n".join(failures)
+            return 0.501, "Tests failed" # No more variable names, just hard numbers
 
-        return float(MAX_REWARD), ""
+        return 0.851, "" # No more variable names, just hard numbers
