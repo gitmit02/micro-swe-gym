@@ -15,14 +15,11 @@ author: "Micro-SWE Gym Team"
 
 tasks:
   - id: 0
-    difficulty: easy
-    description: "Fix a simple operator error (+ instead of -)."
+    grader: "server.micro_swe_gym_environment:MicroSweGymEnvironment"
   - id: 1
-    difficulty: medium
-    description: "Add missing edge-case handling (empty list → return 0.0)."
+    grader: "server.micro_swe_gym_environment:MicroSweGymEnvironment"
   - id: 2
-    difficulty: hard
-    description: "Refactor O(n²) two-sum to O(n) hash-map solution."
+    grader: "server.micro_swe_gym_environment:MicroSweGymEnvironment"
 
 reward:
   no_compile: 0.05
