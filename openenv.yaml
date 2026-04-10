@@ -22,9 +22,9 @@ tasks:
     grader: "server.micro_swe_gym_environment:MicroSweGymEnvironment"
 
 reward:
-  no_compile: 0.05
-  compile_fail: 0.2
-  all_pass: 0.95
+  no_compile: 0.15
+  compile_fail: 0.501
+  all_pass: 0.851
 
 runtime:
   language: python
