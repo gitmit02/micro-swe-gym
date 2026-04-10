@@ -39,4 +39,4 @@ HEALTHCHECK --interval=15s --timeout=5s --start-period=30s --retries=3 \
 EXPOSE 7860
 
 # ── Default command ───────────────────────────────────────────────────────────
-CMD ["uvicorn", "server.app:app", "--host", "0.0.0.0", "--port", "7860"]
+CMD ["sh", "-c", "uvicorn server.app:app --host 0.0.0.0 --port 7860 & sleep 5 && python inference.py"]
