@@ -112,9 +112,9 @@ TASKS: list[dict[str, Any]] = [
 ]
 
 # Change these lines (around line 110)
-MIN_REWARD = 0.15      # Increased from 0.10
-PARTIAL_REWARD = 0.50  
-MAX_REWARD = 0.85      # Decreased from 0.90
+MIN_REWARD = 0.151
+PARTIAL_REWARD = 0.551
+MAX_REWARD = 0.951
 
 
 # ---------------------------------------------------------------------------
@@ -239,6 +239,6 @@ class MicroSweGymEnvironment:
                 )
 
         if failures:
-            return 0.501, "Tests failed" # No more variable names, just hard numbers
+            return PARTIAL_REWARD, "Tests failed" # No more variable names, just hard numbers
 
-        return 0.851, "" # No more variable names, just hard numbers
+        return MAX_REWARD, "" # No more variable names, just hard numbers
